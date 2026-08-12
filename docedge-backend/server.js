@@ -45,10 +45,10 @@ app.use('/api/prescriptions', require('./routes/prescriptionHendlaRouts.js'));
 app.use('/api/symptoms', require('./routes/symptomRoutes.js')); // Symptoms ke liye route
 app.use('/api/vaccination', require('./routes/vaccinationRoutes.js')); // Vaccination ke liye route
 app.use('/api/p_reports', require('./routes/p_reportRoutes.js')); // Patient-specific reports ke liye route
-app.use('/api/notification-plans', require('./routes/notificationPlanRoutes.js')); // Patient-specific reports ke liye route
+app.use('/api/notification-plans', require('./routes/Notificationplanroutes.js')); // Patient-specific reports ke liye route
 app.use('/api/whatsapp', require('./routes/whatsappRoutes.js')); // Patient-specific reports ke liye route
-app.use('/api/subscriptions', require('./routes/subscription.routes'));
-app.use('/api/plans',         require('./routes/plan.routes'));
+app.use('/api/subscriptions', require('./routes/subscription.routes.js'));
+app.use('/api/plans',         require('./routes/plan.routes.js'));
 app.use('/api/lead',         require('./routes/lead.routes.js'));
 app.use('/api/notifications',         require('./routes/notificationRoutes.js'));
  app.use('/api/authuser',         require('./routes/AuthUserroutes.js'));
