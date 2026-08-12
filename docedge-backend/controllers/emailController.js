@@ -1,7 +1,7 @@
 // controllers/emailController.js
 const nodemailer = require('nodemailer');
 const Doctor = require('../models/Doctor');
-const { checkUsage, incrementUsageOnly } = require('./notificationPlanController');
+const { checkUsage, incrementUsageOnly } = require('./Notificationplancontroller');
 
 // ── Load SMTP config from .env ──
 const SMTP_CONFIG = {
