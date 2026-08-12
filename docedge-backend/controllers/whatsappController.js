@@ -1,6 +1,6 @@
 // controllers/whatsappController.js
 const Doctor                               = require('../models/Doctor');
-const { checkUsage, incrementUsageOnly }   = require('./notificationPlanController');
+const { checkUsage, incrementUsageOnly }   = require('./Notificationplancontroller');
 const FormData                             = require('form-data');
 const fetch                                = require('node-fetch');
 
