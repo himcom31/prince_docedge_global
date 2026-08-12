@@ -1,7 +1,7 @@
 // controllers/notificationPlanController.js
 const axios                    = require('axios');
-const NotificationPlan         = require('../models/NotificationPlan');
-const NotificationSubscription = require('../models/NotificationSubscription');
+const NotificationPlan         = require('../models/Notificationplan');
+const NotificationSubscription = require('../models/Notificationsubscription');
 
 const CF_BASE = process.env.CASHFREE_ENV === 'production'
   ? 'https://api.cashfree.com/pg'

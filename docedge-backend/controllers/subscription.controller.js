@@ -6,7 +6,7 @@ const Subscription = require('../models/Subscription');
 const Doctor       = require('../models/Doctor');
 const PendingSignup= require('../models/PendingSignup');
 const Plan         = require('../models/Plan');
-const RenewPending = require('../models/RenewPending');
+const RenewPending = require('../models/Renewpending');
 
 const CF_BASE = process.env.CASHFREE_ENV === 'production'
   ? 'https://api.cashfree.com/pg'
