@@ -1,7 +1,7 @@
 // routes/notificationPlanRoutes.js
 const express = require('express');
 const router  = express.Router();
-const ctrl    = require('../controllers/notificationPlanController');
+const ctrl    = require('../controllers/Notificationplancontroller');
 const { protect, isAdmin, protectD } = require('../middleware/authMiddleware');
 const protectUser = require('../middleware/AuthUsermiddleware');
 
