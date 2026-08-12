@@ -7,7 +7,7 @@ const ConsultationForm = require('../models/ConsultationForm');
 const mongoose = require('mongoose');
 const clinicSchema = require('../models/clinicProfileSchema');
 const Subscription = require('../models/Subscription');
-const { checkUsage, incrementUsageOnly } = require('./notificationPlanController');
+const { checkUsage, incrementUsageOnly } = require('./Notificationplancontroller');
 const axios = require('axios'); // already hoga
 const Doctor = require('../models/Doctor');
 
