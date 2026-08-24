@@ -9,7 +9,8 @@ import Builder from '../components/Doctor/Builder'
 import ManagePlans from '../components/Manageplans';
 import AdminNotificationPlans from '../components/Adminnotificationplans'
 import DemoRequestsPage from '../components/Demorequestspageadmin';
-import SubscriptionsPage from '../components/Alldoctordetails'
+import SubscriptionsPage from '../components/Alldoctordetails';
+import TemplateManager from '../components/Templatemanager';
 
 // Ek dummy component Dr. Data ke liye (Aap yahan apni list dikha sakte hain)
 const DoctorsDataList = () => <div className="p-10 bg-white rounded-3xl border border-slate-100 shadow-sm"><h1>All Doctors List will appear here...</h1></div>;
@@ -75,6 +76,8 @@ const AdminDashboard = () => {
             <Route path="notification-plans" element={<AdminNotificationPlans />} />
             <Route path="enquiry" element={<DemoRequestsPage />} />
             <Route path="alldoctor" element={<SubscriptionsPage />} />
+            <Route path="template" element={<TemplateManager />} />
+
 
           </Routes>
         </main>

@@ -98,7 +98,7 @@ const sendRenewalEmail = async ({ name, email, clinicName, planName, interval, e
 const createDoctorFromPending = async (pending, orderId, orderAmount = 0) => {
   const slug = await generateUniqueSlug(pending.clinicName);
 
-  const doctor = await Doctor.create({
+ const doctor = await Doctor.create({
     name:               pending.name,
     email:              pending.email,
     clinicName:         pending.clinicName,
@@ -107,6 +107,8 @@ const createDoctorFromPending = async (pending, orderId, orderAmount = 0) => {
     mobile:             pending.mobile,
     address:            pending.address,
     subscriptionStatus: 'active',
+    selectedTemplate:   pending.selectedTemplate || undefined,  // ← YEH ADD KARO
+     professionalProfile: pending.professionalProfile || undefined,  // ← YE ADD KARO
   });
 
   const clinicCollectionName = slug.replace(/-/g, '_');
@@ -574,11 +576,20 @@ exports.getClinicSubscription = async (req, res) => {
 };
 
 // ── GET /api/subscriptions/all (superadmin) ───────────────────────────────────
+// ── GET /api/subscriptions/all (superadmin) ───────────────────────────────────
 exports.getAllSubscriptions = async (req, res) => {
   try {
     const subs = await Subscription.find()
-      .populate('clinicId', 'name clinicName email mobile')
-      .populate('planId',   'name monthlyPrice yearlyPrice')
+      .populate({
+        path: 'clinicId',
+        select: 'name clinicName email mobile selectedTemplate professionalProfile',  // ← professionalProfile add karo
+        populate: {
+          path: 'selectedTemplate.templateId',
+          model: 'Template',
+          select: 'name imageUrl',
+        }
+      })
+      .populate('planId', 'name monthlyPrice yearlyPrice')
       .sort('-createdAt');
     res.json({ success: true, subscriptions: subs });
   } catch (err) {

@@ -53,6 +53,9 @@ app.use('/api/lead',         require('./routes/lead.routes.js'));
 app.use('/api/notifications',         require('./routes/notificationRoutes.js'));
  app.use('/api/authuser',         require('./routes/AuthUserroutes.js'));
 app.use('/api/formlanding',         require('./routes/Demorequest.routes.js'));
+app.use('/api/templates',         require('./routes/Templateroutes.js'));
+
+
 
 
 

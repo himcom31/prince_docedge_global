@@ -23,6 +23,8 @@ const Sidebar = ({ isOpen, setIsSidebarOpen }) => {
     { to: '/admin/notification-plans', icon: <CreditCard size={20} />, label: 'Notification Plans' },
     { to: '/admin/enquiry', icon: <CreditCard size={20} />, label: 'Enquiry' },
     { to: '/admin/alldoctor', icon: <CreditCard size={20} />, label: 'AllDoctors' },
+    { to: '/admin/template', icon: <CreditCard size={20} />, label: 'Template' },
+
 
 
 
