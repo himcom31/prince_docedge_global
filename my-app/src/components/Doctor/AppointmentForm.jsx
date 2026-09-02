@@ -174,7 +174,9 @@ const AppointmentForm = () => {
             consultFeeStatus,
             consultationFee: fee,
             paidAmount,
-            validUpto: calculateExpiry(new Date(), clinicConfig.currentValidity)
+            validUpto: isValid
+                ? new Date(appt.validUpto || appt.appointmentDate).toISOString().split('T')[0]  // existing validity
+                : calculateExpiry(new Date(), clinicConfig.currentValidity)
         }));
     };
 
@@ -238,7 +240,9 @@ const AppointmentForm = () => {
                         consultFeeStatus: isValid ? 'No' : 'Yes',
                         consultationFee: fee,
                         paidAmount: isValid ? 0 : fee,
-                        validUpto: calculateExpiry(new Date(), clinicConfig.currentValidity)
+                        validUpto: isValid
+                            ? new Date(appt.validUpto || appt.appointmentDate).toISOString().split('T')[0]
+                            : calculateExpiry(new Date(), clinicConfig.currentValidity)
                     }));
 
                 } else {

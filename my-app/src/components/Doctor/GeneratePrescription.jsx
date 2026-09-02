@@ -1009,11 +1009,17 @@ const parseHtmlToSegments = (html) => {
         if (tag === 'b' || tag === 'strong') newCtx.bold = true;
         if (tag === 'i' || tag === 'em') newCtx.italic = true;
         if (tag === 'u') newCtx.underline = true;
-        if (tag === 'span' || tag === 'font' || tag === 'div' || tag === 'p' || tag === 'b' || tag === 'strong' || tag === 'i' || tag === 'em' || tag === 'u') {
+        if (tag === 'span' || tag === 'font' || tag === 'div' || tag === 'p' || tag === 'b' || tag === 'strong' || tag === 'i' || tag === 'em' || tag === 'u' || tag === 'li') {
             let c = null;
             if (node.style && node.style.color) c = node.style.color;
             else if (tag === 'font' && node.getAttribute && node.getAttribute('color')) c = node.getAttribute('color');
             if (c) newCtx.color = c;
+
+            let bg = null;
+            if (node.style && node.style.backgroundColor && node.style.backgroundColor !== 'transparent' && node.style.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+                bg = node.style.backgroundColor;
+            }
+            if (bg) newCtx.bgColor = bg;
         }
         if (tag === 'ul') { let liIdx = 0; for (const child of node.childNodes) { if (child.nodeName.toLowerCase() === 'li') { walkNode(child, { ...newCtx, bullet: true, ordered: false, listIndex: liIdx }); liIdx++; } else walkNode(child, newCtx); } return; }
         if (tag === 'ol') { let liIdx = 1; for (const child of node.childNodes) { if (child.nodeName.toLowerCase() === 'li') { walkNode(child, { ...newCtx, bullet: true, ordered: true, listIndex: liIdx }); liIdx++; } else walkNode(child, newCtx); } return; }
@@ -1023,37 +1029,98 @@ const parseHtmlToSegments = (html) => {
         if (node.nodeType === Node.TEXT_NODE) { const text = node.textContent || ''; if (text) segments.push({ ...newCtx, text }); return; }
         for (const child of node.childNodes) walkNode(child, newCtx);
     };
-    const initCtx = { bold: false, italic: false, underline: false, color: DEFAULT_COLOR, bullet: false, ordered: false, listIndex: 0, isListItem: false, isNewline: false };
+    const initCtx = { bold: false, italic: false, underline: false, color: DEFAULT_COLOR, bgColor: null, bullet: false, ordered: false, listIndex: 0, isListItem: false, isNewline: false };
     for (const child of tmp.childNodes) walkNode(child, initCtx);
     return segments;
+};
+
+const colorToRgb = (col) => {
+    if (!col) return null;
+    if (col.startsWith('#')) return hexToRgb(col);
+    const m = col.match(/(\d+),\s*(\d+),\s*(\d+)/);
+    if (m) return [parseInt(m[1]), parseInt(m[2]), parseInt(m[3])];
+    return null;
 };
 
 const renderHtmlSegmentsToPdf = (doc, segments, startX, startY, maxWidth, checkPageBreakFn, lineHeight = 14) => {
     if (!segments || segments.length === 0) return startY;
     let curY = startY; let lineBuffer = []; let currentListItem = null;
+
+    const getStyle = (seg) => (seg.bold && seg.italic) ? 'bolditalic' : seg.bold ? 'bold' : seg.italic ? 'italic' : 'normal';
+
+    const drawChunk = (x, y, text, seg) => {
+        doc.setFont('times', getStyle(seg));
+        doc.setFontSize(9.5);
+        const w = doc.getTextWidth(text);
+        // background highlight (draw first, behind the text)
+        if (seg.bgColor) {
+            const bgRgb = colorToRgb(seg.bgColor);
+            if (bgRgb) {
+                doc.setFillColor(bgRgb[0], bgRgb[1], bgRgb[2]);
+                doc.rect(x, y - 7.5, w, 9.5, 'F');
+            }
+        }
+        const rgb = colorToRgb(seg.color) || [30, 41, 59];
+        doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+        doc.text(text, x, y);
+        if (seg.underline) {
+            doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
+            doc.setLineWidth(0.4);
+            doc.line(x, y + 1, x + w, y + 1);
+        }
+    };
+
     const flushLine = (isListItem, listCtx) => {
         if (lineBuffer.length === 0 && !isListItem) return;
         curY = checkPageBreakFn(curY, lineHeight + 4);
         let x = startX;
-        if (isListItem && listCtx) { doc.setFont('times', 'normal'); doc.setFontSize(9.5); doc.setTextColor(30, 41, 59); const prefix = listCtx.ordered ? `${listCtx.listIndex}. ` : '• '; doc.text(prefix, x, curY); x += doc.getTextWidth(prefix) + 2; }
+        if (isListItem && listCtx) {
+            doc.setFont('times', 'normal'); doc.setFontSize(9.5); doc.setTextColor(30, 41, 59);
+            const prefix = listCtx.ordered ? `${listCtx.listIndex}. ` : '• ';
+            doc.text(prefix, x, curY);
+            x += doc.getTextWidth(prefix) + 2;
+        }
         for (const seg of lineBuffer) {
-            let style = 'normal';
-            if (seg.bold && seg.italic) style = 'bolditalic'; else if (seg.bold) style = 'bold'; else if (seg.italic) style = 'italic';
-            doc.setFont('times', style); doc.setFontSize(9.5);
-            let r = 30, g = 41, b = 59;
-            const col = seg.color || '#1e293b';
-            if (col.startsWith('#')) { const rgb = hexToRgb(col); r = rgb[0]; g = rgb[1]; b = rgb[2]; } else if (col.startsWith('rgb')) { const m = col.match(/(\d+),\s*(\d+),\s*(\d+)/); if (m) { r = parseInt(m[1]); g = parseInt(m[2]); b = parseInt(m[3]); } }
-            doc.setTextColor(r, g, b);
+            doc.setFont('times', getStyle(seg));
+            doc.setFontSize(9.5);
             const words = seg.text.split(' '); let lineStr = '';
             for (const word of words) {
-                const test = lineStr ? lineStr + ' ' + word : word;
-                const testW = doc.getTextWidth(test); const avail = maxWidth - (x - startX);
-                if (testW > avail && lineStr) { doc.text(lineStr, x, curY); if (seg.underline) { const tw = doc.getTextWidth(lineStr); doc.setDrawColor(r, g, b); doc.setLineWidth(0.4); doc.line(x, curY + 1, x + tw, curY + 1); } x = startX + (isListItem ? 12 : 0); curY += lineHeight; curY = checkPageBreakFn(curY, lineHeight); lineStr = word; } else { lineStr = test; }
+                let remainingWord = word;
+                while (remainingWord) {
+                    const test = lineStr ? lineStr + ' ' + remainingWord : remainingWord;
+                    const testW = doc.getTextWidth(test);
+                    const avail = maxWidth - (x - startX);
+
+                    if (testW <= avail) {
+                        lineStr = test;
+                        remainingWord = '';
+                    } else if (lineStr) {
+                        drawChunk(x, curY, lineStr, seg);
+                        x = startX + (isListItem ? 12 : 0);
+                        curY += lineHeight;
+                        curY = checkPageBreakFn(curY, lineHeight);
+                        lineStr = '';
+                    } else {
+                        let chunk = '';
+                        for (const ch of remainingWord) {
+                            const testChunk = chunk + ch;
+                            if (doc.getTextWidth(testChunk) > avail && chunk) break;
+                            chunk = testChunk;
+                        }
+                        if (!chunk) chunk = remainingWord[0];
+                        drawChunk(x, curY, chunk, seg);
+                        x = startX + (isListItem ? 12 : 0);
+                        curY += lineHeight;
+                        curY = checkPageBreakFn(curY, lineHeight);
+                        remainingWord = remainingWord.slice(chunk.length);
+                    }
+                }
             }
-            if (lineStr) { doc.text(lineStr, x, curY); if (seg.underline) { const tw = doc.getTextWidth(lineStr); doc.setDrawColor(r, g, b); doc.setLineWidth(0.4); doc.line(x, curY + 1, x + tw, curY + 1); } x += doc.getTextWidth(lineStr); }
+            if (lineStr) { drawChunk(x, curY, lineStr, seg); x += doc.getTextWidth(lineStr); }
         }
         lineBuffer = []; curY += lineHeight;
     };
+
     for (let idx = 0; idx < segments.length; idx++) {
         const seg = segments[idx];
         if (seg.isListItem) { if (lineBuffer.length > 0) flushLine(false, null); currentListItem = { bullet: seg.bullet, ordered: seg.ordered, listIndex: seg.listIndex }; continue; }
@@ -1643,11 +1710,11 @@ const PreviewModal = ({ isOpen, onClose, pdfDoc, patient, onPersist, onSaveExit,
     }, [isOpen, pdfDoc]);
 
     useEffect(() => {
-    if (!isOpen || !slug) return;
-    axios.get(`${API_BAS}/api/notification-plans/channel-status/${slug}`)
-        .then(res => setChannelStatus(res.data))
-        .catch(() => setChannelStatus(null));
-}, [isOpen, slug]);
+        if (!isOpen || !slug) return;
+        axios.get(`${API_BAS}/api/notification-plans/channel-status/${slug}`)
+            .then(res => setChannelStatus(res.data))
+            .catch(() => setChannelStatus(null));
+    }, [isOpen, slug]);
 
     if (!isOpen) return null;
 
@@ -1750,35 +1817,35 @@ const PreviewModal = ({ isOpen, onClose, pdfDoc, patient, onPersist, onSaveExit,
                     </div>
 
                     {channelStatus?.whatsapp?.allowed ? (
-    <button className="preview-btn preview-btn-wa" onClick={handleWhatsApp} disabled={waSending || !pdfBlobUrl}>
-        {waSending ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> :
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
-        }
-        <span>Send via WhatsApp</span>
-    </button>
-) : channelStatus ? (
-    <div className="wa-status-badge error" style={{ borderRadius: 8, padding: '12px 16px' }}>
-        <X size={13} /> {channelStatus.whatsapp?.reason}
-    </div>
-) : null}
-{waStatus === 'sending' && <div className="wa-status-badge sending"><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />Sending on WhatsApp...</div>}
-{waStatus === 'success' && <div className="wa-status-badge success"><CheckCircle size={12} />Sent on WhatsApp!</div>}
-{waStatus === 'error' && <div className="wa-status-badge error"><X size={12} />{waError}</div>}
+                        <button className="preview-btn preview-btn-wa" onClick={handleWhatsApp} disabled={waSending || !pdfBlobUrl}>
+                            {waSending ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> :
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                            }
+                            <span>Send via WhatsApp</span>
+                        </button>
+                    ) : channelStatus ? (
+                        <div className="wa-status-badge error" style={{ borderRadius: 8, padding: '12px 16px' }}>
+                            <X size={13} /> {channelStatus.whatsapp?.reason}
+                        </div>
+                    ) : null}
+                    {waStatus === 'sending' && <div className="wa-status-badge sending"><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />Sending on WhatsApp...</div>}
+                    {waStatus === 'success' && <div className="wa-status-badge success"><CheckCircle size={12} />Sent on WhatsApp!</div>}
+                    {waStatus === 'error' && <div className="wa-status-badge error"><X size={12} />{waError}</div>}
 
-{channelStatus?.email?.allowed ? (
-    <button onClick={handleEmail} disabled={emailSending || !pdfBlobUrl}
-        style={{ background: patient?.email ? '#7c3aed' : '#94a3b8', color: '#fff', border: 'none', borderRadius: 10, padding: '16px 20px', fontWeight: 800, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.8px', cursor: emailSending || !pdfBlobUrl ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 12, width: '100%', opacity: emailSending ? 0.7 : 1 }}>
-        {emailSending ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <Mail size={20} />}
-        <span>Send via Email</span>
-    </button>
-) : channelStatus ? (
-    <div className="wa-status-badge error" style={{ borderRadius: 8, padding: '12px 16px' }}>
-        <X size={13} /> {channelStatus.email?.reason}
-    </div>
-) : null}
-{emailStatus === 'sending' && <div className="wa-status-badge sending"><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />Sending Email...</div>}
-{emailStatus === 'success' && <div className="wa-status-badge success"><CheckCircle size={12} />Email Sent!</div>}
-{emailStatus === 'error' && <div className="wa-status-badge error"><X size={12} />{emailError}</div>}
+                    {channelStatus?.email?.allowed ? (
+                        <button onClick={handleEmail} disabled={emailSending || !pdfBlobUrl}
+                            style={{ background: patient?.email ? '#7c3aed' : '#94a3b8', color: '#fff', border: 'none', borderRadius: 10, padding: '16px 20px', fontWeight: 800, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.8px', cursor: emailSending || !pdfBlobUrl ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 12, width: '100%', opacity: emailSending ? 0.7 : 1 }}>
+                            {emailSending ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <Mail size={20} />}
+                            <span>Send via Email</span>
+                        </button>
+                    ) : channelStatus ? (
+                        <div className="wa-status-badge error" style={{ borderRadius: 8, padding: '12px 16px' }}>
+                            <X size={13} /> {channelStatus.email?.reason}
+                        </div>
+                    ) : null}
+                    {emailStatus === 'sending' && <div className="wa-status-badge sending"><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />Sending Email...</div>}
+                    {emailStatus === 'success' && <div className="wa-status-badge success"><CheckCircle size={12} />Email Sent!</div>}
+                    {emailStatus === 'error' && <div className="wa-status-badge error"><X size={12} />{emailError}</div>}
 
                     <button className="preview-btn preview-btn-print" onClick={handlePrint} disabled={!pdfBlobUrl || printing}>
                         {printing
@@ -2472,7 +2539,11 @@ const GeneratePrescription = () => {
                     { content: 'Date:', styles: { fontStyle: 'bold', textColor: [30, 78, 121] } },
                     { content: new Date().toLocaleDateString('en-GB') },
                     { content: 'Valid Upto:', styles: { fontStyle: 'bold', textColor: [30, 78, 121] } },
-                    { content: calculateValidityUpto(patient.createdAt, clinicProfileData?.appointmentValidity) },
+                     {
+                        content: patient.consultationFee?.validUpto
+                            ? new Date(patient.consultationFee.validUpto).toLocaleDateString('en-GB')
+                            : '—'
+                    },
                 ],
 
                 // Row 3: Weight | BMI | Address
@@ -2781,7 +2852,67 @@ const GeneratePrescription = () => {
                             const isImg2 = filledFields[i + 1]
                                 ? String(dynamicValues[String(filledFields[i + 1].id)] || '').startsWith('data:image')
                                 : false;
-                            const rowH = (isImg1 || isImg2) ? 90 : ROW_H;
+                            let rowH = ROW_H; // default 20pt
+
+                            if (isImg1 || isImg2) {
+                                rowH = 90;
+                            } else {
+                                // Left col available width
+                                const label1Str = `${filledFields[i].label}:`;
+                                doc.setFont("times", "bold");
+                                doc.setFontSize(9);
+                                const label1W = doc.getTextWidth(label1Str);
+                                const val1X = MARGIN_L + label1W + 10;
+                                const val1MaxW = MID - val1X - 5;
+
+                                // Right col available width
+                                let val2MaxW = 0;
+                                if (filledFields[i + 1]) {
+                                    const label2Str = `${filledFields[i + 1].label}:`;
+                                    const label2W = doc.getTextWidth(label2Str);
+                                    const val2X = COL2_X + label2W + 10;
+                                    val2MaxW = MARGIN_R - val2X;
+                                }
+
+                                // Val1 kitni lines lega
+                                doc.setFont("times", "normal");
+                                const val1 = String(dynamicValues[String(filledFields[i].id)] || '');
+                                let lines1 = 1;
+                                if (val1MaxW > 0 && val1.trim()) {
+                                    let cur = '';
+                                    for (const word of val1.split(' ')) {
+                                        const test = cur ? cur + ' ' + word : word;
+                                        if (doc.getTextWidth(test) > val1MaxW && cur) {
+                                            lines1++;
+                                            cur = word;
+                                        } else {
+                                            cur = test;
+                                        }
+                                    }
+                                }
+
+                                // Val2 kitni lines lega
+                                let lines2 = 1;
+                                if (filledFields[i + 1] && val2MaxW > 0) {
+                                    const val2 = String(dynamicValues[String(filledFields[i + 1].id)] || '');
+                                    if (val2.trim()) {
+                                        let cur = '';
+                                        for (const word of val2.split(' ')) {
+                                            const test = cur ? cur + ' ' + word : word;
+                                            if (doc.getTextWidth(test) > val2MaxW && cur) {
+                                                lines2++;
+                                                cur = word;
+                                            } else {
+                                                cur = test;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Jo bhi zyada lines ho uske hisaab se height
+                                const maxLines = Math.max(lines1, lines2);
+                                rowH = Math.max(ROW_H, maxLines * 13 + 8);
+                            }
 
                             // ✅ Row fit nahi hoti toh next page + contd. header
                             if (curY + rowH > FOOTER_TOP_PT) {
