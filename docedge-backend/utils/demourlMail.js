@@ -95,10 +95,10 @@ const buildDemoEmailHTML = ({ full_name, clinic_name, specialization, preferred_
                           Demo URL
                         </td>
                         <td>
-                          <a href="https://docedge.tbskit.cloud/docedge-clinic/login"
+                          <a href="https://software.docedge.in/docedge-clinic/login"
                              style="color:#0077c8;font-size:14px;font-weight:600;
                                     text-decoration:none;word-break:break-all;">
-                            https://docedge.tbskit.cloud/docedge-clinic/login
+                            https://software.docedge.in/docedge-clinic/login
                           </a>
                         </td>
                       </tr>
@@ -144,7 +144,7 @@ const buildDemoEmailHTML = ({ full_name, clinic_name, specialization, preferred_
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
                 <tr>
                   <td align="center">
-                    <a href="https://docedge.tbskit.cloud/docedge-clinic/login"
+                    <a href="https://software.docedge.in/docedge-clinic/login"
                        style="display:inline-block;background:linear-gradient(135deg,#00aeef,#0077c8);
                                color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;
                                padding:16px 40px;border-radius:12px;

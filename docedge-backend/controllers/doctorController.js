@@ -54,7 +54,7 @@ exports.createDoctor = async (req, res) => {
       html: `
         <h1>Hello Dr. ${name},</h1>
         <p>Aapka clinic management portal setup is completed.</p>
-        <p><b>Login URL:</b> https://docedge.tbskit.cloud/${slug}/login</p>
+        <p><b>Login URL:</b> https://software.docedge.in/${slug}/login</p>
         <p><b>Username:</b> ${email}</p>
         <p><b>Password:</b> ${password}</p>
         <br>
@@ -145,7 +145,7 @@ exports.updateDoctor = async (req, res) => {
         html: `
           <h1>Hello Dr. ${updatedDoctor.name},</h1>
           <p>Your clinic management portal credentials have been updated.</p>
-          <p><b>Login URL:</b> https://docedge.tbskit.cloud/${updatedDoctor.slug}/login</p>
+          <p><b>Login URL:</b> https://software.docedge.in/${updatedDoctor.slug}/login</p>
           <p><b>Updated Username:</b> ${updatedDoctor.email}</p>
           ${plainPassword 
             ? `<p><b>Updated Password:</b> ${plainPassword}</p>` 

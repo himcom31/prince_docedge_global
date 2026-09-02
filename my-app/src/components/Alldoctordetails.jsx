@@ -385,7 +385,7 @@ function Drawer({ item, onClose }) {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <a
               className="sp-ext-btn"
-              href={`https://docedge.tbskit.cloud/${doctor.slug || ""}/login`}
+              href={`https://software.docedge.in/${doctor.slug || ""}/login`}
               target="_blank" rel="noreferrer"
             >
               <ExternalLink size={12} /> Portal
